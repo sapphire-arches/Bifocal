@@ -33,7 +33,6 @@ def compute_dif(imgr, imgl):
     print(imgr.size, imgl.size)
 
     pixel_count = 0
-    skiped_count = 0
 
     tick = time()
     last_print = tick
@@ -45,16 +44,11 @@ def compute_dif(imgr, imgl):
             diff.putpixel(p, img_diff)
             min_diff = 1 << 31 # really friggin big number
             min_diff_pos = 0
-            if abs(img_diff) > 100:
-                for d in range(-MAX_DIFF, 1):
-                    region_diff = compute_region_diff(imgr, imgl, x, y, d, min_diff)
-                    if region_diff < min_diff:
-                        min_diff_pos = d
-                        min_diff = region_diff
-            else:
-                #assume no difference
-                skiped_count += 1
-                min_diff_pos = 0
+            for d in range(-MAX_DIFF, 1):
+                region_diff = compute_region_diff(imgr, imgl, x, y, d, min_diff)
+                if region_diff < min_diff:
+                    min_diff_pos = d
+                    min_diff = region_diff
             min_diff_pos = -min_diff_pos
             depth.putpixel(p, min_diff_pos * 20)
             pixel_count += 1
@@ -67,7 +61,7 @@ def compute_dif(imgr, imgl):
     diff.save("testdiff.png", "png")
     depth.save("testdepth.png", "png")
 
-    print("Skipped %%%1.2d of pixels. Throughput was %3.2d pixels per second" % (100 * skiped_count / pixel_count, pixel_count / (tock - tick)))
+    print("Throughput was %3.2d pixels per second" % (pixel_count / (tock - tick)))
     return depth
 
 

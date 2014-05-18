@@ -16,7 +16,8 @@ void diff_time(struct timeval * x, struct timeval * y, struct timeval * diff);
 void reshape(int w, int h) {
   glLoadIdentity();
   glTranslatef(-1.f, -1.f, 0.f);
-  glScalef(2.f / w, 2.f / h, 0.f);
+  glScalef(1.f / w, 1.f / h, 0.f);
+  glViewport(0, 0, w, h);
 }
 
 void display(void) {
@@ -58,6 +59,15 @@ void display(void) {
   }
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glBegin(GL_QUADS);
+  {
+    glVertex2f(0, 0);
+    glVertex2f(20, 0);
+    glVertex2f(20, 20);
+    glVertex2f(0, 20);
+  }
+  glEnd();
+
   glutSwapBuffers();
 
   gettimeofday(&end, NULL);
@@ -80,7 +90,7 @@ void init_window(int * argc, char ** argv) {
   glutDisplayFunc(display);
   glutIdleFunc(display);
 
-  glClearColor(1.f, 1.f, 1.f, 0.f);
+  glClearColor(0.5f, 0.5f, 0.5f, 0.f);
 }
 
 int main(int argc, char ** argv) {

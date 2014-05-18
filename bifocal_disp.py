@@ -50,7 +50,7 @@ def compute_dif(imgr, imgl):
                         min_diff_pos = d
                         min_diff = region_diff
             else:
-                #assume noe difference
+                #assume no difference
                 skiped_count += 1
                 min_diff_pos = 0
             min_diff_pos = -min_diff_pos

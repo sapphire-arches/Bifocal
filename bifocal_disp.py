@@ -10,7 +10,7 @@ def disp():
 MAX_DIFF = 5
 WINDOW_RADIUS = 1
 
-def compute_region_diff(imgr, imgl, x, y, d):
+def compute_region_diff(imgr, imgl, x, y, d, current_min):
     diff = 0
     for xx in range(-WINDOW_RADIUS, WINDOW_RADIUS):
         for yy in range(-WINDOW_RADIUS, WINDOW_RADIUS):
@@ -18,6 +18,8 @@ def compute_region_diff(imgr, imgl, x, y, d):
             p2 = (x + xx + d, y + yy)
             dd = imgr.getpixel(p1) - imgl.getpixel(p2)
             diff += dd * dd
+            if diff > current_min:
+                return diff
     return diff
 
 def compute_dif(imgr, imgl):
@@ -45,7 +47,7 @@ def compute_dif(imgr, imgl):
             min_diff_pos = 0
             if abs(img_diff) > 100:
                 for d in range(-MAX_DIFF, 1):
-                    region_diff = compute_region_diff(imgr, imgl, x, y, d)
+                    region_diff = compute_region_diff(imgr, imgl, x, y, d, min_diff)
                     if region_diff < min_diff:
                         min_diff_pos = d
                         min_diff = region_diff

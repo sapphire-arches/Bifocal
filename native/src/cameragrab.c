@@ -1,16 +1,17 @@
 #include "cam.h"
+#include "globals.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <GL/glut.h>
 #include <GL/gl.h>
-
-#define PRINT_GL_ERROR(tmpvar) if ((tmpvar = glGetError()) != 0) {fprintf(stderr, "GL error is %d at %s:%d\n", tmpvar, __FILE__, __LINE__);}
 
 static struct camera cam;
 static GLuint texture;
@@ -58,8 +59,8 @@ void display(void) {
     }
     if (FD_ISSET(cam.fd, &rfds)) {
       retval = read_frame(&cam);
-      printf("%d %d\n", retval, cam.buffers[retval].length);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 320, 240, 0, GL_RED, GL_UNSIGNED_SHORT, cam.buffers[retval].start);
+      printf("%d %zd\n", retval, cam.buffers[retval].length);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RED, GL_UNSIGNED_SHORT, cam.buffers[retval].start);
       PRINT_GL_ERROR(retval);
     }
   }
@@ -71,13 +72,13 @@ void display(void) {
     glVertex2f(0, 0);
     glTexCoord2f(1, 1);
 
-    glVertex2f(320, 0);
+    glVertex2f(WIDTH, 0);
     glTexCoord2f(1, 0);
 
-    glVertex2f(320, 240);
+    glVertex2f(WIDTH, HEIGHT);
     glTexCoord2f(0, 0);
 
-    glVertex2f(0, 240);
+    glVertex2f(0, HEIGHT);
     glTexCoord2f(0, 1);
   }
   glEnd();

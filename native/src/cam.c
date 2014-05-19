@@ -15,6 +15,7 @@
 #include <linux/videodev2.h>
 
 #include "util.h"
+#include "globals.h"
 
 #define NUM_BUFFERS 4
 
@@ -60,7 +61,6 @@ void init_userpointer(int fd) {
 // returns a camera file descriptor
 struct camera open_camera(const char * fname) {
   struct v4l2_capability cap;
-  struct v4l2_crop crop;
   struct v4l2_format fmt;
 
   int camera_fd = open(fname, O_RDONLY);
@@ -93,8 +93,8 @@ struct camera open_camera(const char * fname) {
   memset(&fmt, 0, sizeof(fmt));
 
   fmt.type          = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  fmt.fmt.pix.width = 320;
-  fmt.fmt.pix.height= 240;
+  fmt.fmt.pix.width = WIDTH;
+  fmt.fmt.pix.height= HEIGHT;
 
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
@@ -156,7 +156,7 @@ int read_frame(struct camera * cam) {
     }
   }
 
-  int i = buff.index;
+  unsigned int i = buff.index;
 
   assert(i < cam->num_buffers);
 

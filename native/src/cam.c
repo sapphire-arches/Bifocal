@@ -96,7 +96,8 @@ struct camera open_camera(const char * fname) {
   fmt.fmt.pix.width = WIDTH;
   fmt.fmt.pix.height= HEIGHT;
 
-  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+  __u32 requested_format = V4L2_PIX_FMT_YUYV;
+  fmt.fmt.pix.pixelformat = requested_format;
   fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
   fmt.fmt.pix.colorspace  = V4L2_COLORSPACE_SRGB;
   if (xioctl(camera_fd, VIDIOC_S_FMT, &fmt) < 0) {
@@ -105,6 +106,7 @@ struct camera open_camera(const char * fname) {
   }
 
   printf("Camera is running at %dx%d with %d things per pixel\n", fmt.fmt.pix.width, fmt.fmt.pix.height, fmt.fmt.pix.bytesperline / fmt.fmt.pix.width);
+  printf("We requested format %x and got format %x\n", requested_format, fmt.fmt.pix.pixelformat);
 
   init_userpointer(camera_fd);
   struct camera_buffer * buffers = alloc_buffers(NUM_BUFFERS, fmt.fmt.pix.sizeimage);

@@ -15,14 +15,15 @@
 
 static struct camera cam;
 static GLuint texture;
-static unsigned char * swap_tmp;
+static unsigned int * convert_tmp;
 
 void diff_time(struct timeval * x, struct timeval * y, struct timeval * diff);
+void convert_image(unsigned short * yuyv, unsigned int * rgb);
 
 void reshape(int w, int h) {
   glLoadIdentity();
   glTranslatef(-1.f, -1.f, 0.f);
-  glScalef(2.f / w, 2.f / h, 0.f);
+  glScalef(4.f / w, 4.f / h, 0.f);
   glViewport(0, 0, w, h);
 }
 
@@ -60,7 +61,8 @@ void display(void) {
     if (FD_ISSET(cam.fd, &rfds)) {
       retval = read_frame(&cam);
       printf("%d %zd\n", retval, cam.buffers[retval].length);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RED, GL_UNSIGNED_SHORT, cam.buffers[retval].start);
+      convert_image(cam.buffers[retval].start, convert_tmp);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, convert_tmp);
       PRINT_GL_ERROR(retval);
     }
   }
@@ -121,7 +123,7 @@ void init_window(int * argc, char ** argv) {
 int main(int argc, char ** argv) {
   cam = open_camera(argv[1]);
   start_capturing(&cam);
-  swap_tmp = malloc(cam.buffers[0].length);
+  convert_tmp = malloc(WIDTH * HEIGHT * sizeof(int));
 
   init_window(&argc, argv);
 
@@ -146,4 +148,78 @@ void diff_time(struct timeval * x, struct timeval * y, struct timeval * diff) {
    *           tv_usec is certainly positive. */
   diff->tv_sec = x->tv_sec - y->tv_sec;
   diff->tv_usec = x->tv_usec - y->tv_usec;
+}
+
+unsigned char color_clampi(int f) {
+  printf("%d ", f);
+  if (f < 0) {
+    return 0;
+  }
+  if (f > 255) {
+    return 255;
+  }
+  return (unsigned char) f;
+}
+
+unsigned char color_clampd(double f) {
+  if (f < 0) {
+    return 0;
+  }
+  if (f > 255) {
+    return 255;
+  }
+  return (unsigned char)(f);
+}
+
+unsigned int rgb_from_yuyv_components(unsigned char y, unsigned char u, unsigned char v) {
+  uint8_t lookup[16] = {
+    0x0, 0x8, 0x4, 0xC,
+    0x2, 0xA, 0x6, 0xE,
+    0x1, 0x9, 0x5, 0xD,
+    0x3, 0xB, 0x7, 0xF };
+  union {
+    unsigned int rgb;
+    struct {
+      unsigned char padding;
+      unsigned char b;
+      unsigned char g;
+      unsigned char r;
+    } colors;
+  } output;
+
+  output.rgb = 0;
+
+  y <<= 4;
+  u = lookup[u];
+  u <<= 4;
+  v = lookup[v];
+  v <<= 4;
+
+  output.colors.r = color_clampd(y);// + (1.4065 * (u - 128.0)));
+  output.colors.g = color_clampd(y);// - (0.3455 * (v - 128.0)) - (0.7169 * (v - 128.0)));
+  output.colors.b = color_clampd(y);// + (1.7790 * (v - 128.0)));
+  return output.rgb;
+}
+
+void rgb_from_yuyv(unsigned short yuyv, unsigned int * c1, unsigned int * c2) {
+  union {
+    unsigned short yuyv;
+    struct {
+      unsigned char u:4;
+      unsigned char y1:4;
+      unsigned char v:4;
+      unsigned char y2:4;
+    } components;
+  } input;
+  input.yuyv = yuyv;
+
+  *c1 = rgb_from_yuyv_components(input.components.y1, input.components.u, input.components.v);
+  *c2 = rgb_from_yuyv_components(input.components.y1, input.components.u, input.components.v);
+}
+
+void convert_image(unsigned short * yuyv, unsigned int * rgb) {
+  for (unsigned int i = 0; i < WIDTH * HEIGHT; i += 2) {
+    unsigned int * rgb_base = rgb + i;
+    rgb_from_yuyv(yuyv[i], rgb_base, rgb_base + 1);
+  }
 }

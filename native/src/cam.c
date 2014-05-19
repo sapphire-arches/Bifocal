@@ -98,6 +98,7 @@ struct camera open_camera(const char * fname) {
 
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
   fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
+  fmt.fmt.pix.colorspace  = V4L2_COLORSPACE_SRGB;
   if (xioctl(camera_fd, VIDIOC_S_FMT, &fmt) < 0) {
     fprintf(stderr, "ioctl to set pixel format failed\n");
       exit(EXIT_FAILURE);

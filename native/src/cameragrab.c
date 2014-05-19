@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -9,14 +10,18 @@
 #include <GL/glut.h>
 #include <GL/gl.h>
 
+#define PRINT_GL_ERROR(tmpvar) if ((tmpvar = glGetError()) != 0) {fprintf(stderr, "GL error is %d at %s:%d\n", tmpvar, __FILE__, __LINE__);}
+
 static struct camera cam;
+static GLuint texture;
+static unsigned char * swap_tmp;
 
 void diff_time(struct timeval * x, struct timeval * y, struct timeval * diff);
 
 void reshape(int w, int h) {
   glLoadIdentity();
   glTranslatef(-1.f, -1.f, 0.f);
-  glScalef(1.f / w, 1.f / h, 0.f);
+  glScalef(2.f / w, 2.f / h, 0.f);
   glViewport(0, 0, w, h);
 }
 
@@ -53,20 +58,31 @@ void display(void) {
     }
     if (FD_ISSET(cam.fd, &rfds)) {
       retval = read_frame(&cam);
-      char * vals = (char*)cam.buffers[retval].start;
-      printf("%d %2x %d\n", retval, vals[cam.buffers[retval].length] & 0xFF, cam.buffers[retval].length);
+      printf("%d %d\n", retval, cam.buffers[retval].length);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 320, 240, 0, GL_RED, GL_UNSIGNED_SHORT, cam.buffers[retval].start);
+      PRINT_GL_ERROR(retval);
     }
   }
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glBindTexture(GL_TEXTURE_2D, texture);
   glBegin(GL_QUADS);
   {
     glVertex2f(0, 0);
-    glVertex2f(20, 0);
-    glVertex2f(20, 20);
-    glVertex2f(0, 20);
+    glTexCoord2f(1, 1);
+
+    glVertex2f(320, 0);
+    glTexCoord2f(1, 0);
+
+    glVertex2f(320, 240);
+    glTexCoord2f(0, 0);
+
+    glVertex2f(0, 240);
+    glTexCoord2f(0, 1);
   }
   glEnd();
+
+  PRINT_GL_ERROR(retval);
 
   glutSwapBuffers();
 
@@ -81,6 +97,7 @@ void display(void) {
 }
 
 void init_window(int * argc, char ** argv) {
+  int temp;
   glutInit(argc, argv);
   glutInitWindowSize(800, 600);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
@@ -90,12 +107,20 @@ void init_window(int * argc, char ** argv) {
   glutDisplayFunc(display);
   glutIdleFunc(display);
 
+  glEnable(GL_TEXTURE_2D);
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  PRINT_GL_ERROR(temp);
+
   glClearColor(0.5f, 0.5f, 0.5f, 0.f);
 }
 
 int main(int argc, char ** argv) {
   cam = open_camera(argv[1]);
   start_capturing(&cam);
+  swap_tmp = malloc(cam.buffers[0].length);
 
   init_window(&argc, argv);
 

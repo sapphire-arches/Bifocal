@@ -13,8 +13,8 @@
 #include <GL/glut.h>
 #include <GL/gl.h>
 
-static struct camera cam;
-static GLuint texture;
+static struct camera cams[NUM_CAMS];
+static GLuint textures[NUM_CAMS];
 static unsigned int * convert_tmp;
 
 void diff_time(struct timeval * x, struct timeval * y, struct timeval * diff);
@@ -37,12 +37,14 @@ void display(void) {
 
   FD_ZERO(&rfds);
   FD_SET(0, &rfds);
-  FD_SET(cam.fd, &rfds);
+  for (int i = 0; i < NUM_CAMS; ++i) {
+    FD_SET(cams[i].fd, &rfds);
+  }
 
   tv.tv_usec = 0;
   tv.tv_sec = 0;
 
-  retval = select(cam.fd + 1, &rfds, NULL, NULL, &tv);
+  retval = select(cams[NUM_CAMS - 1].fd + 1, &rfds, NULL, NULL, &tv);
 
   if (retval < 0) {
     printf("Warning: select errored");
@@ -58,29 +60,33 @@ void display(void) {
       }
       free(buff);
     }
-    if (FD_ISSET(cam.fd, &rfds)) {
-      retval = read_frame(&cam);
-      printf("%d %zd\n", retval, cam.buffers[retval].length);
-      convert_image(cam.buffers[retval].start, convert_tmp);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, convert_tmp);
-      PRINT_GL_ERROR(retval);
+    for (int i = 0; i < NUM_CAMS; ++i) {
+      struct camera cam = cams[i];
+      if (FD_ISSET(cam.fd, &rfds)) {
+        retval = read_frame(&cam);
+        printf("%d %zd\n", retval, cam.buffers[retval].length);
+        convert_image(cams[i].buffers[retval].start, convert_tmp);
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, convert_tmp);
+        PRINT_GL_ERROR(retval);
+      }
     }
   }
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glBindTexture(GL_TEXTURE_2D, texture);
   glBegin(GL_QUADS);
-  {
-    glVertex2f(0, 0);
+  for (int i = 0; i < NUM_CAMS; ++i) {
+    glVertex2f(0, HEIGHT * i);
     glTexCoord2f(1, 1);
+    glBindTexture(GL_TEXTURE_2D, textures[i]);
 
-    glVertex2f(WIDTH, 0);
+    glVertex2f(WIDTH, HEIGHT * i);
     glTexCoord2f(1, 0);
 
-    glVertex2f(WIDTH, HEIGHT);
+    glVertex2f(WIDTH, HEIGHT * (i + 1));
     glTexCoord2f(0, 0);
 
-    glVertex2f(0, HEIGHT);
+    glVertex2f(0, HEIGHT * (i + 1));
     glTexCoord2f(0, 1);
   }
   glEnd();
@@ -111,18 +117,23 @@ void init_window(int * argc, char ** argv) {
   glutIdleFunc(display);
 
   glEnable(GL_TEXTURE_2D);
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  PRINT_GL_ERROR(temp);
+  glGenTextures(NUM_CAMS, textures);
+  for (int i = 0; i < NUM_CAMS; ++i) {
+    glBindTexture(GL_TEXTURE_2D, textures[i]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    PRINT_GL_ERROR(temp);
+  }
 
   glClearColor(0.5f, 0.5f, 0.5f, 0.f);
 }
 
 int main(int argc, char ** argv) {
-  cam = open_camera(argv[1]);
-  start_capturing(&cam);
+  cams[0] = open_camera("/dev/video1");
+  cams[1] = open_camera("/dev/video2");
+  for (int i = 0; i < NUM_CAMS; ++i) {
+    start_capturing(cams + i);
+  }
   convert_tmp = malloc(WIDTH * HEIGHT * sizeof(int));
 
   init_window(&argc, argv);

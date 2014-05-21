@@ -90,6 +90,10 @@ struct camera open_camera(const char * fname) {
     exit(EXIT_FAILURE);
   }
 
+  if (!(cap.capabilities & V4L2_CAP_TIMEPERFRAME)) {
+    fprintf(stderr, "WARNING: %s does not support changing framerate\n", fname);
+  }
+
   memset(&fmt, 0, sizeof(fmt));
 
   fmt.type          = V4L2_BUF_TYPE_VIDEO_CAPTURE;
